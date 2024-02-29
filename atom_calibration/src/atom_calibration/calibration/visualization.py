@@ -188,7 +188,7 @@ def setupVisualization(dataset, args, selected_collection_key):
     for pattern_key, pattern in dataset['calibration_config']['calibration_patterns'].items():
         graphics['patterns'][pattern_key] = {}
         graphics['patterns'][pattern_key]['colormap'] = cm.gist_rainbow(
-            np.linspace(0, 1, pattern['dimension']['x'] * pattern['dimension']['y']))
+            np.linspace(0, 1, 4 * pattern['dimension']['x'] * pattern['dimension']['y']))
 
     # graphics['collections']['colormap'] = cm.tab20b(np.linspace(0, 1, len(dataset['collections'].keys())))
     graphics['collections']['colormap'] = cm.Pastel2(np.linspace(0, 1, len(dataset['collections'].keys())))

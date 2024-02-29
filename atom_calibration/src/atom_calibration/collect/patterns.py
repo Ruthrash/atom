@@ -13,7 +13,7 @@ from atom_calibration.collect import patterns as opencv_patterns
 import atom_core.atom
 
 class ArucoBoardPattern(object):
-    def __init__(self, size, length, marker_length, dictionary='DICT_5X5_100'):
+    def __init__(self, size, marker_length, marker_separation, dictionary='DICT_5X5_100'):
         # string to charuco dictionary conversion
         aruco_dict = {
             'DICT_4X4_50': cv2.aruco.DICT_4X4_50,
@@ -34,28 +34,27 @@ class ArucoBoardPattern(object):
             'DICT_7X7_1000': cv2.aruco.DICT_7X7_1000
         }        
         if dictionary in aruco_dict:
-            cv_dictionary = acruco_dict[dictionary]
+            cv_dictionary = aruco_dict[dictionary]
         else:
             print('Invalid dictionary set on json configuration file. Using the default DICT_5X5_100.')
             cv_dictionary = aruco_dict['DICT_5X5_100']        
+        print(size)
         self.size = (size["x"], size["y"])
         self.number_of_corners = size["x"] * size["y"]    
-        self.dictionary = cv2.aruco.getPredefinedDictionary(cv_dictionary)     
-        self.board = cv2.aruco.GridBoard((size["x"] + 1, size["y"] + 1), 
-                                        length, 
-                                        marker_length,
+        self.dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_1000)  
+        self.board = cv2.aruco.GridBoard((size["x"] , size["y"] ), 
+                                        marker_length, 
+                                        marker_separation,
                                         self.dictionary)
+        # print(self.board.getobjPoints())
 
     def detect(self, image, equalize_histogram=False):
-
         if len(image.shape) == 3:  # convert to gray if it is an rgb image
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
             gray = image
-
         if equalize_histogram:  # equalize image histogram
             gray = cv2.equalizeHist(gray)
-
         # https://github.com/lardemua/atom/issues/629
         if cv2.__version__ == '4.6.0':
             params = cv2.aruco.DetectorParameters_create()
@@ -65,36 +64,78 @@ class ArucoBoardPattern(object):
             detector = cv2.aruco.ArucoDetector(self.dictionary, params)
             corners, ids, rejected = detector.detectMarkers(gray)
 
-        if len(corners) <= 4: # Must have more than 3 corner detections
-            return {"detected": False, 'keypoints': np.array([]), 'ids': []}
+        # if len(corners) <= 4: # Must have more than 3 corner detections
+        #     return {"detected": False, 'keypoints': np.array([]), 'ids': []}
 
         # Interpolation 
-        ret, ccorners, cids = cv2.aruco.interpolateCornersCharuco(corners, ids, gray, self.board)
-        if ccorners is None: # Must have interpolation running ok
-            return {"detected": False, 'keypoints': np.array([]), 'ids': []}
+        # ret, ccorners, cids = cv2.aruco.interpolateCornersCharuco(corners, ids, gray, self.board)
+        # if ccorners is None: # Must have interpolation running ok
+        #     return {"detected": False, 'keypoints': np.array([]), 'ids': []}
 
         # Subpixel resolution for corners
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 500, 0.0001)
         # from https://stackoverflow.com/questions/33117252/cv2-cornersubpix-function-returns-none-value
-        cv2.cornerSubPix(gray, ccorners, (5, 5), (-1, -1), criteria)
+        
+        # for corner in corners:
+        #     cv2.cornerSubPix(gray, corner, (5, 5), (-1, -1), criteria)
 
         # A valid detection must have at least 25% of the total number of corners.
-        if len(ccorners) <= self.number_of_corners / 4:
-            return {"detected": False, 'keypoints': np.array([]), 'ids': []}
+        # if len(ccorners) <= self.number_of_corners / 4:
+        #     return {"detected": False, 'keypoints': np.array([]), 'ids': []}
 
         # If all above works, return detected corners.
-        return {'detected': True, 'keypoints': ccorners, 'ids': cids.ravel().tolist()}
+        if ids is None: 
+            return {"detected": False, 'keypoints': np.array([]), 'ids': []}
+        
+        return {'detected': True, 'keypoints': corners, 'ids': ids}
 
 
 
-    def drawKeypoints(self, image, result):
+    def drawKeypoints(self, image, result, K, D, length=0.1, color=(255, 0, 0), pattern_name=None, debug=False):
         if result['keypoints'] is None or len(result['keypoints']) == 0:
             return
-        points = result['keypoints'].astype(np.int32)
-        for point in points:
-            cv2.drawMarker(image, tuple(point[0]), (0, 0, 255), cv2.MARKER_CROSS, 14)
-            cv2.circle(image, tuple(point[0]), 7, (0, 255, 0), lineType=cv2.LINE_AA)
-            
+
+        objpoints, imgpoints = self.get_matched_object_points(result['keypoints'], result['ids'])
+        _, rvec, tvec = self.estimate_pose(objpoints, imgpoints, K, D)
+        image = cv2.aruco.drawDetectedMarkers(image, result['keypoints'], borderColor=(0, 0, 255))
+        image = cv2.drawFrameAxes(image, K, D, rvec, tvec, length=0.1)
+
+        
+        
+    def get_matched_object_points(self, corners, ids):
+        obj_points = None; img_points = None
+        obj_points, img_points = self.board.matchImagePoints(corners, 
+                                                            ids, 
+                                                            obj_points, 
+                                                            img_points)
+        return obj_points, img_points    
+    
+    def estimate_pose(self,obj_points, img_points,K, D):
+        rvec = None
+        tvec = None
+        retval, rvec, tvec = cv2.solvePnP(objectPoints = obj_points, 
+                                        imagePoints = img_points, 
+                                        cameraMatrix = K, 
+                                        distCoeffs = D,
+                                        rvec = rvec, 
+                                        tvec = tvec)  
+        return retval, rvec, tvec      
+    def estimate_pose_from_corners(self, corners, ids, K, D):
+        obj_points, img_points = self.get_matched_object_points(corners, ids)
+        return self.estimate_pose(obj_points, img_points, K, D)
+        
+        
+    def compute_reprojection_error(self, rvec, tvec, obj_points, img_points, K, D):
+        errors = []  
+        for img_point, obj_point in zip(img_points, obj_points):
+            proj_img_point, _ = cv2.projectPoints(obj_point,
+                                                rvec,
+                                                tvec,
+                                                K,
+                                                D) 
+            error = cv2.norm(np.squeeze(img_point), np.squeeze(proj_img_point), cv2.NORM_L2)     
+            errors.append(error)
+        return np.mean(errors), np.var(errors)             
             
 class ChessboardPattern(object):
     def __init__(self, size, length):
@@ -343,8 +384,61 @@ def initializePatternsDict(config, step=0.02):
                             'horizontal': []},  # [{'x': 3, 'y': 4}, ..., {'x': 30, 'y': 40}]},
             'transforms_initial': {},  # {'collection_key': {'trans': ..., 'quat': 4}, ...}
         }
-
-        if pattern['pattern_type'] == 'chessboard':
+        if pattern['pattern_type'] == 'arucoboard':
+            # ---------------- Corners ----------------
+            print("print", pattern['dimension']['x'] , pattern['dimension']['y'])
+            board = opencv_patterns.ArucoBoardPattern(size={'x': pattern['dimension']['x'] ,
+                                                            'y': pattern['dimension']['y']}, 
+                                                    marker_length=pattern['size'], 
+                                                    marker_separation=pattern['inner_size'], 
+                                                    dictionary=pattern['dictionary'] )
+            squares = np.squeeze(board.board.getObjPoints())
+            obj_ids = np.squeeze(board.board.getIds())               
+            for square_corners, square_id  in zip(squares, obj_ids):
+                for corner_id, corner in enumerate(np.squeeze(square_corners)): 
+                    corners = np.squeeze(corner)
+                    pattern_dict['corners'].append({'x': corners[0], 
+                                                    'y': corners[1],
+                                                    'corner_id': corner_id,
+                                                    'square_id': square_id
+                                                    })     
+            print("len!!!!!!!! = ", len(pattern_dict['corners']))                  
+            # get pattern points from opencv 
+            
+            # ---------------- Frame ----------------                    
+            # Corners
+            pattern_dict['frame']['corners']['top_left'] = {
+                'x': -square - border_x, 'y': -square - border_y}
+            pattern_dict['frame']['corners']['top_right'] = {
+                'x': nx * square + border_x, 'y': -square - border_y}
+            pattern_dict['frame']['corners']['bottom_right'] = {
+                'x': nx * square + border_x, 'y': ny * square + border_y}
+            pattern_dict['frame']['corners']['bottom_left'] = {
+                'x': -square - border_x, 'y': ny * square + border_y}
+            # Lines sampled
+            pattern_dict['frame']['lines_sampled']['top'] = sampleLineSegment(
+                pattern_dict['frame']['corners']['top_left'], pattern_dict['frame']['corners']['top_right'], step)
+            pattern_dict['frame']['lines_sampled']['bottom'] = sampleLineSegment(
+                pattern_dict['frame']['corners']['bottom_left'], pattern_dict['frame']['corners']['bottom_right'], step)
+            pattern_dict['frame']['lines_sampled']['left'] = sampleLineSegment(pattern_dict['frame']['corners']['top_left'],
+                                                                               pattern_dict['frame']['corners']['bottom_left'],
+                                                                               step)
+            pattern_dict['frame']['lines_sampled']['right'] = sampleLineSegment(
+                pattern_dict['frame']['corners']['top_right'], pattern_dict['frame']['corners']['bottom_right'], step)
+            # -------------- Transitions ----------------
+            # vertical
+            for col in range(0, config['calibration_patterns'][pattern_key]['dimension']['x']):
+                p0 = {'x': col * square, 'y': 0}
+                p1 = {'x': col * square, 'y': (ny - 1) * square}
+                pts = sampleLineSegment(p0, p1, step)
+                pattern_dict['transitions']['vertical'].extend(pts)        
+            # horizontal
+            for row in range(0, config['calibration_patterns'][pattern_key]['dimension']['y']):
+                p0 = {'x': 0, 'y': row * square}
+                p1 = {'x': (nx - 1) * square, 'y': row * square}
+                pts = sampleLineSegment(p0, p1, step)
+                pattern_dict['transitions']['horizontal'].extend(pts)                    
+        elif pattern['pattern_type'] == 'chessboard':
             # Chessboard: Origin on top left corner, X left to right, Y top to bottom
 
             # ---------------- Corners ----------------
@@ -454,7 +548,6 @@ def initializePatternsDict(config, step=0.02):
 
 
 def estimatePatternPosesForCollection(dataset, collection_key):
-
     collection = dataset['collections'][collection_key]
     for pattern_key, pattern in dataset['calibration_config']['calibration_patterns'].items():
 
@@ -472,20 +565,25 @@ def estimatePatternPosesForCollection(dataset, collection_key):
 
         if pattern['pattern_type'] == 'charuco':
             opencv_pattern = opencv_patterns.CharucoPattern(size, length, inner_length, dictionary)
+        elif pattern['pattern_type'] == 'arucoboard':
+            opencv_pattern = opencv_patterns.ArucoBoardPattern(size, length, inner_length, dictionary)
+            
 
+        
         flg_detected_pattern = False
 
         dataset['patterns'][pattern_key]['transforms_initial'][collection_key] = {
             'detected': False}  # by default no detection
 
         for sensor_key, sensor in dataset['sensors'].items():
-
+            print("sensor_key", sensor_key)
             # if pattern not detected by sensor in collection
             if not collection['labels'][pattern_key][sensor_key]['detected']:
                 continue
-
+            print("detected sensor_key,", sensor_key)
             # change accordingly to the first camera to give chessboard first poses
             if sensor['modality'] == 'rgb':
+
                 K = np.ndarray((3, 3), dtype=float, buffer=np.array(
                     sensor['camera_info']['K']))
                 D = np.ndarray((5, 1), dtype=float, buffer=np.array(
@@ -513,6 +611,22 @@ def estimatePatternPosesForCollection(dataset, collection_key):
                     _, rvecs, tvecs = cv2.aruco.estimatePoseCharucoBoard(np.array(corners, dtype=np.float32),
                                                                          np_ids, opencv_pattern.board,
                                                                          K, D, rvecs, tvecs)
+                    
+                elif pattern['pattern_type'] =='arucoboard':
+                    objpts = []
+                    imgpts = []
+                    board_points = np.squeeze(opencv_pattern.board.getObjPoints())
+                    
+                    for idx, point in enumerate(collection['labels'][pattern_key][sensor_key]['idxs']):
+                        imgpts.append(np.array([point['x'], point['y']]))
+                        objpts.append(board_points[point['square_id']][point['corner_id']])
+
+                    
+                    _, rvecs, tvecs = opencv_pattern.estimate_pose(np.array(objpts), np.array(imgpts), K,  D = np.array([0.0,0.0,0.0,0.0]))
+                    print("reprojection error for ",sensor_key," = ", opencv_pattern.compute_reprojection_error(rvecs, tvecs, 
+                                                                                        np.array(objpts, dtype=np.float32), 
+                                                                                        np.array(imgpts, dtype=np.float32), 
+                                                                                        K,  D = np.array([0.0,0.0,0.0,0.0])))
                 else:
                     _, rvecs, tvecs = cv2.solvePnP(objp[ids], np.array(corners, dtype=np.float32), K, D)
 

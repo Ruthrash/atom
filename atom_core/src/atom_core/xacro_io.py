@@ -19,9 +19,9 @@ from atom_core.naming import generateKey
 
 def readXacroFile(description_file):
     # xml_robot = URDF.from_parameter_server()
-    urdf_file = '/tmp/description.urdf'
+    urdf_file = '/root/jango_ws/src/tor42_ridgeback/tor42_ridgeback_description/urdf/jango_new.urdf'
     # print('Parsing description file ' + description_file)
-    execute('xacro ' + description_file + ' -o ' + urdf_file, verbose=False)  # create a temp urdf file
+    # execute('xacro ' + description_file + ' -o ' + urdf_file, verbose=False)  # create a temp urdf file
     try:
         xml_robot = URDF.from_xml_file(urdf_file)  # read teh urdf file
     except:

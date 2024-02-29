@@ -108,13 +108,13 @@ class DataCollector:
 
         # Must first convert to urdf, if it is a xacro
         urdf_file = '/tmp/description.urdf'
-        if os.path.exists(urdf_file):
-            # print('Deleting temporary file ' + urdf_file)
-            os.remove(urdf_file)
+        # if os.path.exists(urdf_file):
+        #     # print('Deleting temporary file ' + urdf_file)
+        #     os.remove(urdf_file)
 
-        print('Parsing description file ' + Fore.BLUE + description_file + Style.RESET_ALL)
-        xacro_cmd = 'xacro ' + description_file + ' -o ' + urdf_file
-        execute(xacro_cmd, verbose=True)  # create tmp urdf file
+        # print('Parsing description file ' + Fore.BLUE + description_file + Style.RESET_ALL)
+        # xacro_cmd = 'xacro ' + description_file + ' -o ' + urdf_file
+        # execute(xacro_cmd, verbose=True)  # create tmp urdf file
 
         if not os.path.exists(urdf_file):
             atomError('Could not parse description file ' + Fore.BLUE + description_file + Style.RESET_ALL + '\nYou must manually run command:\n' +
@@ -403,7 +403,7 @@ class DataCollector:
         return stamps, average_time, max_delta
 
     def saveCollection(self):
-
+        print("CAlled save collection!!!!!")
         # --------------------------------------
         # collect sensor data and labels (images, laser scans, etc)
         # --------------------------------------
@@ -521,9 +521,12 @@ class DataCollector:
                     for detection_2d in pattern_label.idxs:
                         labels_dict['idxs'].append({'id': detection_2d.id,
                                                     'x': detection_2d.x,
-                                                    'y': detection_2d.y})
+                                                    'y': detection_2d.y,
+                                                    'square_id': detection_2d.square_id,
+                                                    'corner_id': detection_2d.corner_id})
 
                     all_sensor_labels_dict[pattern_key][sensor_key] = labels_dict
+                    print("COlleting data for: ", sensor_key)
 
                 elif sensor['modality'] in ['lidar3d', 'depth']:
 
@@ -590,6 +593,8 @@ class DataCollector:
 
         # Save to json file.
         output_file = self.output_folder + '/dataset.json'
+        print('Estimating pattern poses for collection ...')
+        print("Sacing to:", output_file)
         atom_core.dataset_io.saveAtomDataset(output_file, dataset)
 
     def getAllAbstractTransforms(self):

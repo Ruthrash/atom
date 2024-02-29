@@ -38,6 +38,10 @@ class SimplePatternDetector:
                 size, length, inner_length, dictionary)
         elif config['calibration_patterns'][self.pattern_key]['pattern_type'] == 'chessboard':
             self.pattern = patterns.ChessboardPattern(size, length)
+        elif config['calibration_patterns'][self.pattern_key]['pattern_type'] == 'arucoboard':
+            # marker_length = config['calibration_patterns'][self.pattern_key]['marker_length']
+            # marker_separation =  config['calibration_patterns'][self.pattern_key]['marker_separation']
+            self.pattern = patterns.ArucoBoardPattern(size, length, inner_length, dictionary)            
         else:
             rospy.logerr("Unknown pattern '{}'".format(
                 config['calibration_patterns'][self.pattern_key]['pattern_type']))
@@ -87,8 +91,8 @@ class SimplePatternDetector:
                   str(len(result['ids'])) + ' out of ' + str(nx * ny) + ' corners)')
         else:
             print('Failed to detect pattern')
-
-        self.pattern.drawKeypoints(image, result, K, D)
+        D = np.array([0.0,0.0,0.0,0.0])
+        self.pattern.drawKeypoints(image, result, K = K, D = D)
 
         if self.args['use_ir']:
             image_msg_out = self.bridge.cv2_to_imgmsg(image, 'mono8')

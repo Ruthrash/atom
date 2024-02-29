@@ -58,7 +58,12 @@ class RGBLabeler:
         # Create a self.detectors dictionary with all one detector class instantiated for each pattern
         self.detectors = {}
         for pattern_key, pattern in self.config['calibration_patterns'].items():
-            if pattern['pattern_type'] == 'chessboard':
+            if pattern['pattern_type'] == 'arucoboard':
+                self.detectors[pattern_key] = patterns.ArucoBoardPattern(pattern['dimension'],
+                                                                      pattern['size'],
+                                                                      pattern['inner_size'],
+                                                                      pattern['dictionary'])                
+            elif pattern['pattern_type'] == 'chessboard':
                 self.detectors[pattern_key] = patterns.ChessboardPattern(pattern['dimension'],
                                                                          pattern['size'])
             elif pattern['pattern_type'] == 'charuco':
@@ -67,7 +72,8 @@ class RGBLabeler:
                                                                       pattern['inner_size'],
                                                                       pattern['dictionary'])
             else:
-                atomError('Unknown pattern type ' + str(pattern['pattern_type']))
+                atomError('Unknown pattern type' + str(pattern['pattern_type']))
+        self.pattern_type = pattern['pattern_type']
 
         self.cm_patterns = cm.tab10(np.linspace(0, 1, len(self.config['calibration_patterns'].keys())))
 
@@ -91,7 +97,7 @@ class RGBLabeler:
         print('received!')
 
         self.K = np.ndarray((3, 3), dtype=float, buffer=np.array(self.camera_info_msg.K))
-        self.D = np.ndarray((5, 1), dtype=float, buffer=np.array(self.camera_info_msg.D))
+        self.D = np.array([0.0,0.0,0.0,0.0])#np.ndarray((5, 1), dtype=float, buffer=np.array(self.camera_info_msg.D))
 
         # Subscribe to the message topic containing sensor data
         self.subscriber = rospy.Subscriber(self.sensor_config['topic_name'], self.msg_type,
@@ -124,20 +130,33 @@ class RGBLabeler:
             result = detector.detect(image, equalize_histogram=False)
 
             if result['detected']:
-                pattern_labels.detected = True
-                pattern_labels.pattern_name = detector_key
-                for idx, corner in enumerate(result['keypoints']):
-                    x = float(corner[0][0])
-                    y = float(corner[0][1])
+                if self.pattern_type == "arucoboard":
+                    pattern_labels.detected = True
+                    pattern_labels.pattern_name = detector_key
+                    idx = 0
+                    for square_corners, square_id in zip(np.squeeze(result['keypoints']), np.squeeze(result['ids']) ):
+                        for corner_id, corner in enumerate(np.squeeze(square_corners)): 
+                            corners = np.squeeze(corner)
+                            x = float(corner[0])
+                            y = float(corner[1])
 
-                    # The charuco pattern also returns an ID for each keypoint.
-                    # We can use this information for partial detections.
-                    if 'ids' in result:
-                        id = result['ids'][idx]
-                    else:
-                        id = idx
+                            pattern_labels.idxs.append(Detection2D(x=x, y=y, id=idx, square_id=square_id, corner_id=corner_id))
+                            idx += 1                
+                else:
+                    pattern_labels.detected = True
+                    pattern_labels.pattern_name = detector_key
+                    for idx, corner in enumerate(result['keypoints']):
+                        x = float(corner[0][0])
+                        y = float(corner[0][1])
 
-                    pattern_labels.idxs.append(Detection2D(x=x, y=y, id=id))
+                        # The charuco pattern also returns an ID for each keypoint.
+                        # We can use this information for partial detections.
+                        if 'ids' in result:
+                            id = result['ids'][idx]
+                        else:
+                            id = idx
+
+                        pattern_labels.idxs.append(Detection2D(x=x, y=y, id=id))
 
             # Add the labels if this pattern to the ImageWithLabels msg
             image_with_rgb_labels_msg.patterns.append(pattern_labels)

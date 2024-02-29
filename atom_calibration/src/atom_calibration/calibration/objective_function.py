@@ -166,10 +166,19 @@ def errorReport(dataset, residuals, normalizer, args):
 def getPointsInPatternAsNPArray(_collection_key, _pattern_key, _sensor_key, _dataset):
     pts_in_pattern_list = []  # collect the points
     for pt_detected in _dataset['collections'][_collection_key]['labels'][_pattern_key][_sensor_key]['idxs']:
-        id_detected = pt_detected['id']
-        point = [item for item in _dataset['patterns'][_pattern_key]['corners'] if item['id'] == id_detected][0]
-        pts_in_pattern_list.append(point)
-
+        # id_detected = pt_detected['id']
+        # print("corners", _dataset['patterns'][_pattern_key]['corners'])
+        # print(pt_detected)
+        print(_sensor_key, [item for item in _dataset['patterns'][_pattern_key]['corners'] if (item['square_id'] == pt_detected['square_id'] and 
+                                                                                            item['corner_id'] == pt_detected['corner_id'])])
+        try:
+            point = [item for item in _dataset['patterns'][_pattern_key]['corners'] if (item['square_id'] == pt_detected['square_id'] and 
+                                                                                            item['corner_id'] == pt_detected['corner_id'])][0]
+            pts_in_pattern_list.append(point)
+        except: 
+            print(_sensor_key, [item for item in _dataset['patterns'][_pattern_key]['corners'] if (item['square_id'] == pt_detected['square_id'] and 
+                                                                                            item['corner_id'] == pt_detected['corner_id'])])
+            print(pt_detected['id'])
     return np.array([[item['x'] for item in pts_in_pattern_list],  # convert list to np array
                      [item['y'] for item in pts_in_pattern_list],
                      [0 for _ in pts_in_pattern_list],

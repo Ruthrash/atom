@@ -275,7 +275,7 @@ def setupVisualization(dataset, args, selected_collection_key):
         #TODO change colormap between each pattern
         graphics['colormap'][pattern_key] = {}
         graphics['colormap'][pattern_key]['rgb'] = cm.gist_rainbow(
-            np.linspace(0, 1, pattern['dimension']['x'] * pattern['dimension']['y']))
+            np.linspace(0, 1, 4 * pattern['dimension']['x'] * pattern['dimension']['y']))
 
     graphics['colormap']['range'] = {}
     #TODO change colormap between each pattern
@@ -708,6 +708,7 @@ def visualizationFunction(models, selection, clicked_points=None):
                 #     cv2.line(image, (x, y), (x, y), color, int(6E-3 * diagonal))
 
                     # Draw ground truth points (as squares)
+                    print(sensor_key, len(collection['labels'][pattern_key][sensor_key]['idxs']))
                     for idx, point in enumerate(collection['labels'][pattern_key][sensor_key]['idxs']):
                         x = int(round(point['x']))
                         y = int(round(point['y']))
