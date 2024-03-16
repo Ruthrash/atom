@@ -19,7 +19,7 @@ from atom_core.naming import generateKey
 
 def readXacroFile(description_file):
     # xml_robot = URDF.from_parameter_server()
-    urdf_file = '/root/jango_ws/src/tor42_ridgeback/tor42_ridgeback_description/urdf/jango_new.urdf'
+    urdf_file = '/tmp/description.urdf'#/root/jango_ws/src/tor42_ridgeback/tor42_ridgeback_description/urdf/jango_new.urdf'
     # print('Parsing description file ' + description_file)
     # execute('xacro ' + description_file + ' -o ' + urdf_file, verbose=False)  # create a temp urdf file
     try:
