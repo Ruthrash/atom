@@ -23,7 +23,6 @@ The scene contains 3 calibration patterns positioned in several links of the rob
   - positioned on the forearm, a charuco, size 170x100 millimeters, corners layout 3x6, aruco dictionary 6x6
   - positioned on the flange, a charuco, size 200x200 millimeters, corners layout 8x8, aruco dictionary 4x4
 
-
 This is a simulated system, which can be seen in gazebo:
 
 ![gazebo](docs/gazebo.png)
@@ -54,7 +53,7 @@ As always, we recommend a careful reading of the [documentation](https://lardemu
 
 In this section, out goal is to describe the calibration pipeline for the **riwmpbot**.
 
-To calibrate, we will need a bagfile called [train.bag](https://drive.google.com/file/d/1_YYIaJfvP8G7_mBr3oT7S7RkVTymu2pb/view?usp=sharing), which contains a recording of the system's data when viewing a calibration pattern in several positions.
+To calibrate, we will need a bagfile called [train.bag](https://drive.google.com/file/d/1bS9wr6EPHVjENyNwODlrF0cU_PJ74bFS/view), which contains a recording of the system's data when viewing a calibration pattern in several positions.
 We produced the bagfile by bringing up the system and then recording a bagfile as described above.
 This is a bagfile with 140 seconds / 115MB for demonstration purposes. Typically, calibration bagfiles are larger.
 
@@ -98,7 +97,7 @@ To collect a dataset we run:
 
 And save a few collections.
 
-We will use as example the [train](https://drive.google.com/file/d/1YlFdik-38zhtI8fByY27XR7pxYdN-h_9/view?usp=sharing) dataset, which contains 44 collections. Some are shown below.
+We will use as example the [train](https://drive.google.com/file/d/1bzgNoFnqLvJ0zE8bvWJjVV50w2bfkage/view) dataset, which contains 44 collections. Some are shown below.
 
 Download and decompress the dataset to **$ATOM_DATASETS/riwmpbot/train**.
 
