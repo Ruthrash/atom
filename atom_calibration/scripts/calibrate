@@ -168,7 +168,7 @@ def main():
     # --- Setup some variables
     # ---------------------------------------
     if args['output_folder'] is None:
-        print('auto_creating output folder')
+        print('auto_creating output folder', os.path.dirname(args['json_file']))
         args['output_folder'] = os.path.dirname(args['json_file']) + '/results'
 
     if not os.path.exists(args['output_folder']):
@@ -681,6 +681,7 @@ def main():
         if not sensor_key in dataset['sensors']:
             dataset['sensors'][sensor_key] = sensor
 
+    print("saving stuff, ")
     saveAtomDataset(args['output_folder'] + '/atom_calibration.json', dataset,
                     save_data_files=False)
 

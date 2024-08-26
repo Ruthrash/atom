@@ -440,7 +440,7 @@ def objectiveFunction(data):
                     # Project points to the image of the sensor ------------------------------------------------------------
                     w, h = collection['data'][sensor_key]['width'], collection['data'][sensor_key]['height']
                     K = np.ndarray((3, 3), buffer=np.array(sensor['camera_info']['K']), dtype=float)
-                    D = np.ndarray((5, 1), buffer=np.array(sensor['camera_info']['D']), dtype=float)
+                    D = np.zeros((5,1))#np.ndarray((5, 1), buffer=np.array(sensor['camera_info']['D']), dtype=float)
 
                     pts_in_image, _, _ = projectToCamera(K, D, w, h, pts_in_sensor[0:3, :])
 
@@ -741,7 +741,7 @@ def objectiveFunction(data):
 
                     w, h = collection['data'][sensor_key]['width'], collection['data'][sensor_key]['height']
                     K = np.ndarray((3, 3), buffer=np.array(sensor['camera_info']['K']), dtype=float)
-                    D = np.ndarray((5, 1), buffer=np.array(sensor['camera_info']['D']), dtype=float)
+                    D = np.zeros((5, 1))#np.ndarray((5, 1), buffer=np.array(sensor['camera_info']['D']), dtype=float)
 
                     from_frame = sensor['parent']
                     to_frame = dataset['calibration_config']['calibration_patterns'][pattern_key]['link']
